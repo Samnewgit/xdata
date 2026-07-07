@@ -1,1 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X Archive — Bookmarks + Likes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #111111;
+    --paper: #fafaf8;
+    --line: #111111;
+    --dim: #6b6b66;
+    --wash: #efefe9;
+    --bm: #0000e0;   /* bookmarks: ink blue */
+    --lk: #c81e1e;   /* likes: red */
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: var(--paper); color: var(--ink); line-height: 1.5; }
 
+  header { border-bottom: 3px solid var(--line); padding: 28px 24px 20px; }
+  header h1 { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+  .meta { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--dim); margin-top: 6px; }
+  .legend { font-family: 'IBM Plex Mono', monospace; font-size: 11px; margin-top: 10px; display: flex; gap: 18px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; display: inline-block; }
+  .swatch.bm { background: var(--bm); }
+  .swatch.lk { background: var(--lk); }
+  .swatch.both { background: linear-gradient(135deg, var(--bm) 50%, var(--lk) 50%); }
+
+  .controls { display: flex; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .controls input, .controls select, .controls button {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 10px 14px;
+    border: none; border-right: 1px solid var(--line); background: var(--paper);
+    color: var(--ink); outline: none; border-radius: 0;
+  }
+  .controls input[type="search"] { flex: 1; min-width: 220px; }
+  .controls input:focus-visible, .controls select:focus-visible, .controls button:focus-visible { background: var(--wash); box-shadow: inset 0 0 0 2px var(--bm); }
+  .controls button { cursor: pointer; }
+  .controls button:hover { background: var(--wash); }
+  .controls button.active { background: var(--ink); color: var(--paper); }
+  #count { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--dim); padding: 12px 24px; }
+
+  #list { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+  .tweet { border: 1px solid var(--line); border-left-width: 5px; margin-top: 20px; padding: 16px 18px; background: #ffffff; }
+  .tweet.src-bookmark { border-left-color: var(--bm); }
+  .tweet.src-like { border-left-color: var(--lk); }
+  .tweet.src-both { border-left: 5px solid; border-image: linear-gradient(to bottom, var(--bm) 50%, var(--lk) 50%) 1; }
+
+  .tweet-head { display: flex; justify-content: space-between; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; margin-bottom: 8px; }
+  .tweet-head .who { font-weight: 600; }
+  .tweet-head a { color: var(--ink); text-decoration: none; }
+  .tweet-head a:hover { color: var(--bm); }
+  .who .handle { color: var(--dim); font-weight: 400; cursor: pointer; }
+  .who .handle:hover { color: var(--bm); }
+  .tweet-head .when { color: var(--dim); white-space: nowrap; }
+  .srctag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 6px; margin-right: 8px; color: #fff; }
+  .srctag.bookmark { background: var(--bm); }
+  .srctag.like { background: var(--lk); }
+  .srctag.both { background: linear-gradient(135deg, var(--bm) 50%, var(--lk) 50%); }
+
+  .text { font-size: 15px; white-space: pre-wrap; word-wrap: break-word; }
+  .quoted { border-left: 3px solid var(--line); margin-top: 10px; padding: 6px 12px; font-size: 13px; color: var(--dim); white-space: pre-wrap; }
+  .links { margin-top: 10px; }
+  .links a { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--bm); text-decoration: none; word-break: break-all; padding: 2px 0; }
+  .links a:hover { text-decoration: underline; }
+  .card { font-family: 'IBM Plex Mono', monospace; font-size: 12px; margin-top: 8px; padding: 8px 10px; background: var(--wash); }
+  .card .domain { color: var(--dim); }
+  .foot { display: flex; gap: 18px; margin-top: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--dim); }
+  .foot .tag { text-transform: uppercase; }
+  #more { display: block; width: 100%; margin-top: 24px; padding: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; background: var(--paper); border: 1px solid var(--line); cursor: pointer; }
+  #more:hover { background: var(--wash); }
+  @media (max-width: 600px) {
+    header { padding: 20px 16px 14px; }
+    header h1 { font-size: 17px; }
+    .legend { flex-wrap: wrap; gap: 10px 16px; }
+
+    /* Controls become a two-row layout: search on top, buttons below */
+    .controls { border-bottom: none; }
+    .controls input[type="search"] {
+      flex: 1 1 100%;
+      min-width: 0;
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 16px;
+      font-size: 16px; /* prevents iOS zoom-on-focus */
+    }
+    .controls .srcbtn, .controls select, .controls #clear {
+      flex: 1 1 auto;
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+    }
+    .controls select { min-width: 0; }
+
+    #count { padding: 10px 16px; }
+    #list { padding: 0 10px 60px; }
+    .tweet { padding: 12px 12px; margin-top: 14px; }
+    .tweet-head { flex-direction: column; gap: 4px; }
+    .text { font-size: 15px; }
+    .foot { flex-wrap: wrap; gap: 8px 14px; }
+    #more { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>X Archive</h1>
+  <div class="meta" id="headerMeta"></div>
+  <div class="legend">
+    <span><span class="swatch bm"></span>bookmark (3591)</span>
+    <span><span class="swatch lk"></span>like (3958)</span>
+    <span><span class="swatch both"></span>both (23)</span>
+  </div>
+</header>
+<div class="controls">
+  <input type="search" id="q" placeholder="search text, author, links...">
+  <button class="srcbtn active" data-src="all">all</button>
+  <button class="srcbtn" data-src="bookmark">bookmarks</button>
+  <button class="srcbtn" data-src="like">likes</button>
+  <select id="sort">
+    <option value="order">order: saved</option>
+    <option value="newest">order: tweet date, newest</option>
+    <option value="oldest">order: tweet date, oldest</option>
+    <option value="likes">order: most liked</option>
+  </select>
+  <button id="clear">clear</button>
+</div>
+<div id="count"></div>
+<div id="list"></div>
+<button id="more" hidden>load more</button>
+
+<script>
+let DATA = [];
+const PAGE = 200;
+
+const $q = document.getElementById('q');
+const $sort = document.getElementById('sort');
+const $list = document.getElementById('list');
+const $count = document.getElementById('count');
+const $more = document.getElementById('more');
+let srcFilter = 'all';
+
+function init() {
+  document.getElementById('headerMeta').textContent =
+    DATA.length + ' tweets from 2014-10-07 to 2026-05-07';
+  apply();
+}
+
+let view = [];
+let shown = 0;
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function apply() {
+  const q = $q.value.trim().toLowerCase();
+  view = DATA.filter(t => {
+    if (srcFilter === 'bookmark' && !(t.src === 'bookmark' || t.src === 'both')) return false;
+    if (srcFilter === 'like' && !(t.src === 'like' || t.src === 'both')) return false;
+    if (!q) return true;
+    return (
+      t.text.toLowerCase().includes(q) ||
+      t.name.toLowerCase().includes(q) ||
+      t.handle.toLowerCase().includes(q) ||
+      t.urls.some(u => u.toLowerCase().includes(q)) ||
+      (t.card && t.card.title.toLowerCase().includes(q))
+    );
+  });
+  const s = $sort.value;
+  if (s === 'newest') view.sort((a,b) => b.ts - a.ts);
+  else if (s === 'oldest') view.sort((a,b) => a.ts - b.ts);
+  else if (s === 'likes') view.sort((a,b) => b.likes - a.likes);
+  else view.sort((a,b) => a.order - b.order);
+
+  $list.innerHTML = '';
+  shown = 0;
+  renderMore();
+}
+
+function renderMore() {
+  const frag = document.createDocumentFragment();
+  const end = Math.min(shown + PAGE, view.length);
+  for (let i = shown; i < end; i++) frag.appendChild(render(view[i]));
+  $list.appendChild(frag);
+  shown = end;
+  $count.textContent = 'showing ' + shown + ' of ' + view.length +
+    (view.length !== DATA.length ? ' (filtered from ' + DATA.length + ')' : '');
+  $more.hidden = shown >= view.length;
+}
+
+function render(t) {
+  const el = document.createElement('article');
+  el.className = 'tweet src-' + t.src;
+  const tweetUrl = 'https://x.com/' + t.handle + '/status/' + t.id;
+  let html = '<div class="tweet-head">' +
+    '<span class="who"><span class="srctag ' + t.src + '">' + t.src + '</span>' +
+    esc(t.name) +
+    ' <span class="handle" data-h="' + esc(t.handle) + '">@' + esc(t.handle) + '</span></span>' +
+    '<span class="when"><a href="' + tweetUrl + '" target="_blank" rel="noopener">' +
+    t.date + ' &nearr;</a></span></div>';
+  html += '<div class="text">' + esc(t.text) + '</div>';
+  if (t.quoted) {
+    html += '<div class="quoted">@' + esc(t.quoted.handle) + ': ' + esc(t.quoted.text) + '</div>';
+  }
+  if (t.card) {
+    html += '<div class="card">' + esc(t.card.title) +
+      ' <span class="domain">' + esc(t.card.domain) + '</span></div>';
+  }
+  if (t.urls.length) {
+    html += '<div class="links">' + t.urls.map(u =>
+      '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(u) + '</a>'
+    ).join('') + '</div>';
+  }
+  const foot = [];
+  if (t.media.length) foot.push(t.media.length + ' media');
+  foot.push(t.likes.toLocaleString() + ' likes');
+  if (t.views) foot.push(t.views.toLocaleString() + ' views');
+  html += '<div class="foot">' + foot.map(f => '<span class="tag">' + f + '</span>').join('') + '</div>';
+  el.innerHTML = html;
+  return el;
+}
+
+let deb;
+$q.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(apply, 150); });
+$sort.addEventListener('change', apply);
+document.getElementById('clear').addEventListener('click', () => { $q.value = ''; apply(); });
+$more.addEventListener('click', renderMore);
+document.querySelectorAll('.srcbtn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.srcbtn').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  srcFilter = b.dataset.src;
+  apply();
+}));
+$list.addEventListener('click', (e) => {
+  const h = e.target.closest('.handle');
+  if (h) { $q.value = h.dataset.h; apply(); }
+});
+
+const PARTS = ["data_001.json","data_002.json"];
+document.getElementById('count').textContent = 'loading ' + PARTS.length + ' data file(s)...';
+Promise.all(PARTS.map(f => fetch(f).then(r => {
+  if (!r.ok) throw new Error(f + ' -> HTTP ' + r.status);
+  return r.json();
+}))).then(parts => { DATA = parts.flat(); init(); })
+.catch(e => { document.getElementById('count').textContent = 'failed to load data: ' + e.message; });
+</script>
+</body>
+</html>
